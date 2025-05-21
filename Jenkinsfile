@@ -1,7 +1,12 @@
 pipeline {
     agent any
+<<<<<<< HEAD
 
     environment {
+=======
+    environment {
+        // Environment variables depending on the branch
+>>>>>>> main
         PORT = BRANCH_NAME == 'main' ? '3000' : '3001'
         IMAGE_NAME = BRANCH_NAME == 'main' ? 'nodemain:v1.0' : 'nodedev:v1.0'
     }
@@ -13,6 +18,7 @@ pipeline {
             }
         }
 
+<<<<<<< HEAD
         stage('Setup Node.js') {
             steps {
                 script {
@@ -21,6 +27,8 @@ pipeline {
             }
         }
 
+=======
+>>>>>>> main
         stage('Build') {
             steps {
                 sh 'npm install'
@@ -33,6 +41,7 @@ pipeline {
             }
         }
 
+<<<<<<< HEAD
         stage('Handle Branch-Specific Logo') {
             steps {
                 script {
@@ -45,6 +54,8 @@ pipeline {
             }
         }
 
+=======
+>>>>>>> main
         stage('Build Docker Image') {
             steps {
                 sh "docker build -t ${IMAGE_NAME} ."
@@ -58,12 +69,17 @@ pipeline {
             }
         }
 
+<<<<<<< HEAD
         stage('Deploy Application') {
+=======
+        stage('Deploy') {
+>>>>>>> main
             steps {
                 sh "docker run -d --expose ${PORT} -p ${PORT}:3000 ${IMAGE_NAME}"
             }
         }
     }
+<<<<<<< HEAD
 
     post {
         success {
@@ -73,4 +89,6 @@ pipeline {
             echo 'Pipeline failed. Please check the logs.'
         }
     }
+=======
+>>>>>>> main
 }
