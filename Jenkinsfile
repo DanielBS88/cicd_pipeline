@@ -1,15 +1,11 @@
 pipeline {
     agent any
 
-    environment {
-        // Dynamic environment variables will be defined later in a script block
-    }
-
     stages {
         stage('Setup Environment') {
             steps {
                 script {
-                    // Set Dynamic ENV variables based on the branch
+                    // Dynamically set environment variables based on the current branch
                     if (env.BRANCH_NAME == 'main') {
                         env.PORT = '3000'
                         env.IMAGE_NAME = 'nodemain:v1.0'
@@ -25,21 +21,21 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                // Checkout source code from the branch
+                // Checkout source code for the branch
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                // Using npm to install dependencies
+                // Install application dependencies
                 sh 'npm install'
             }
         }
 
         stage('Test') {
             steps {
-                // Run the test script to validate the application
+                // Run the test script
                 sh './scripts/test.sh'
             }
         }
@@ -47,7 +43,7 @@ pipeline {
         stage('Handle Branch-Specific Logo') {
             steps {
                 script {
-                    // Replace logo.svg based on the branch dynamically
+                    // Dynamically handle branch-specific logo files
                     if (env.BRANCH_NAME == 'main') {
                         sh 'cp src/logo_main.svg src/logo.svg'
                         echo 'Using main branch logo.'
@@ -61,7 +57,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                // Build Docker image based on branch
+                // Build the Docker image for the application
                 sh "docker build -t ${env.IMAGE_NAME} ."
             }
         }
@@ -76,7 +72,7 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                // Run the Docker container
+                // Run the Docker container for the application
                 sh "docker run -d --expose ${env.PORT} -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
         }
@@ -84,10 +80,11 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline executed successfully.'
+            echo 'Pipeline executed successfully!'
         }
+
         failure {
-            echo 'Pipeline failed. Please check the logs.'
+            echo 'Pipeline failed. Check the logs for details!'
         }
     }
 }
