@@ -1,47 +1,79 @@
 pipeline {
     agent any
+
     environment {
-        // Environment variables depending on the branch
-        PORT = BRANCH_NAME == 'main' ? '3000' : '3001'
-        IMAGE_NAME = BRANCH_NAME == 'main' ? 'nodemain:v1.0' : 'nodedev:v1.0'
+        // Static ENV values can be declared here
     }
 
     stages {
+        stage('Setup Environment') {
+            steps {
+                script {
+                    // Set Dynamic ENV variables depending on the branch
+                    if (env.BRANCH_NAME == 'main') {
+                        env.PORT = '3000'
+                        env.IMAGE_NAME = 'nodemain:v1.0'
+                    } else if (env.BRANCH_NAME == 'dev') {
+                        env.PORT = '3001'
+                        env.IMAGE_NAME = 'nodedev:v1.0'
+                    } else {
+                        error("Unknown branch: ${env.BRANCH_NAME}")
+                    }
+                }
+            }
+        }
+
         stage('Checkout') {
             steps {
+                // Checkout the code for the branch
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
+                // Install dependencies using npm
                 sh 'npm install'
             }
         }
 
         stage('Test') {
             steps {
+                // Execute the test script
                 sh './scripts/test.sh'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME} ."
+                // Build the Docker image with the computed IMAGE_NAME
+                sh "docker build -t ${env.IMAGE_NAME} ."
             }
         }
 
         stage('Cleanup Containers') {
             steps {
+                // Cleanup any previously running containers
                 sh 'docker stop $(docker ps -q) || true'
                 sh 'docker rm $(docker ps -a -q) || true'
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy Application') {
             steps {
-                sh "docker run -d --expose ${PORT} -p ${PORT}:3000 ${IMAGE_NAME}"
+                // Deploy the container on the computed PORT
+                sh "docker run -d --expose ${env.PORT} -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check the logs for details.'
         }
     }
 }
