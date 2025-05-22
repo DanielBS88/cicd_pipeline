@@ -1,15 +1,11 @@
 pipeline {
     agent any
 
-    environment {
-        // Static ENV values can be declared here
-    }
-
     stages {
         stage('Setup Environment') {
             steps {
                 script {
-                    // Set Dynamic ENV variables depending on the branch
+                    // Dynamically set environment variables based on the current branch
                     if (env.BRANCH_NAME == 'main') {
                         env.PORT = '3000'
                         env.IMAGE_NAME = 'nodemain:v1.0'
@@ -25,43 +21,58 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                // Checkout the code for the branch
+                // Checkout source code for the branch
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                // Install dependencies using npm
+                // Install application dependencies
                 sh 'npm install'
             }
         }
 
         stage('Test') {
             steps {
-                // Execute the test script
+                // Run the test script
                 sh './scripts/test.sh'
+            }
+        }
+
+        stage('Handle Branch-Specific Logo') {
+            steps {
+                script {
+                    // Dynamically handle branch-specific logo files
+                    if (env.BRANCH_NAME == 'main') {
+                        sh 'cp src/logo_main.svg src/logo.svg'
+                        echo 'Using main branch logo.'
+                    } else if (env.BRANCH_NAME == 'dev') {
+                        sh 'cp src/logo_dev.svg src/logo.svg'
+                        echo 'Using dev branch logo.'
+                    }
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                // Build the Docker image with the computed IMAGE_NAME
+                // Build the Docker image for the application
                 sh "docker build -t ${env.IMAGE_NAME} ."
             }
         }
 
         stage('Cleanup Containers') {
             steps {
-                // Cleanup any previously running containers
+                // Stop and remove any previously running containers
                 sh 'docker stop $(docker ps -q) || true'
                 sh 'docker rm $(docker ps -a -q) || true'
             }
         }
 
-        stage('Deploy Application') {
+        stage('Deploy') {
             steps {
-                // Deploy the container on the computed PORT
+                // Run the Docker container for the application
                 sh "docker run -d --expose ${env.PORT} -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
         }
@@ -73,7 +84,7 @@ pipeline {
         }
 
         failure {
-            echo 'Pipeline failed. Check the logs for details.'
+            echo 'Pipeline failed. Check the logs for details!'
         }
     }
 }
