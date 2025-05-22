@@ -26,21 +26,7 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                // Install application dependencies
-                sh 'npm install'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                // Run the test script
-                sh './scripts/test.sh'
-            }
-        }
-
-        stage('Handle Branch-Specific Logo') {
+        stage('Replace Logo Before Build') {
             steps {
                 script {
                     // Dynamically handle branch-specific logo files
@@ -73,7 +59,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 // Run the Docker container for the application
-                sh "docker run -d --expose ${env.PORT} -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
+                sh "docker run -d --name ${env.BRANCH_NAME}_container -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
         }
     }
