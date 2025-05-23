@@ -10,7 +10,7 @@ ADD . /opt
 # Install dependencies
 RUN npm install
 
-# Dynamically replace logo.svg (placeholder to be replaced by pipeline logic)
+# Dynamically replace logo.svg (passed as build argument via Jenkinsfile)
 ARG LOGO=src/logo.svg
 RUN cp $LOGO src/logo.svg
 
@@ -22,4 +22,3 @@ RUN npm install -g serve
 
 # Set the default command to serve the production build
 CMD ["serve", "-s", "build", "-l", "3000"]
-#ENTRYPOINT npm run start

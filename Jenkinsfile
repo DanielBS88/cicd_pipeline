@@ -5,7 +5,7 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
-                    // Dynamically set environment variables based on the current branch
+                    // Dynamically set environment variables based on the branch
                     if (env.BRANCH_NAME == 'main') {
                         env.PORT = '3000'
                         env.IMAGE_NAME = 'nodemain:v1.0'
@@ -23,7 +23,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                // Checkout source code for the branch
+                // Checkout the source code for the branch
                 checkout scm
             }
         }
@@ -33,40 +33,33 @@ pipeline {
                 script {
                     // Replace the default logo with the branch-specific logo
                     sh "cp ${env.LOGO} src/logo.svg"
-                    echo "${env.BRANCH_NAME} branch logo applied."
+                    echo "${env.BRANCH_NAME} branch logo applied successfully."
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                // Build the Docker image for the application, passing the LOGO argument
+                // Build the Docker image with branch-specific logo
                 sh "docker build --build-arg LOGO=${env.LOGO} -t ${env.IMAGE_NAME} ."
             }
         }
 
-	 stage('Cleanup Containers') {
-             steps {
-                 script {
-                     // Stop and remove containers specific to the current branch
-                     sh "docker ps -q --filter name=${env.BRANCH_NAME}_container | xargs -r docker stop"
-                     sh "docker ps -a -q --filter name=${env.BRANCH_NAME}_container | xargs -r docker rm"
+        stage('Cleanup Containers') {
+            steps {
+                script {
+                    // Stop any running containers for this branch
+                    sh 'docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop'
+
+                    // Remove any stopped containers for this branch
+                    sh 'docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm'
+                }
             }
-         }
-      }
-#        stage('Cleanup Containers') {#            steps {
-#                script {
-#                    // Stop any running containers for this branch
-#                    sh 'docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop'\
-#                    // Remove any stopped containers for this branch
-#                    sh 'docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm'
-#                }
-#            }
-#        }
+        }
 
         stage('Deploy') {
             steps {
-                // Run the Docker container for the application
+                // Deploy the container for the branch
                 sh "docker run -d --name ${env.BRANCH_NAME}_container -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
         }
@@ -78,7 +71,7 @@ pipeline {
         }
 
         failure {
-            echo 'Pipeline failed. Check the logs for details!'
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
