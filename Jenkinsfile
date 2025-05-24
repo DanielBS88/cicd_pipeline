@@ -29,9 +29,11 @@ pipeline {
         stage('Replace Logo Before Build') {
             steps {
                 script {
+                    echo "Replacing logo file with: ${env.LOGO}" // Log the value of LOGO for debugging
                     sh '''
                     #!/bin/bash
-                    echo "Replacing logo.svg with ${env.LOGO}"
+                    echo "Current branch: ${env.BRANCH_NAME}"
+                    echo "Replacing src/logo.svg with ${env.LOGO}"
                     cp ${env.LOGO} src/logo.svg
                     '''
                     echo "${env.BRANCH_NAME} branch logo applied successfully."
@@ -54,7 +56,6 @@ pipeline {
                 script {
                     echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
 
-                    // Stop running containers
                     sh '''
                     #!/bin/bash
                     for container_id in $(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do
@@ -63,7 +64,6 @@ pipeline {
                     done
                     '''
 
-                    // Remove stopped containers
                     sh '''
                     #!/bin/bash
                     for container_id in $(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do
@@ -72,7 +72,6 @@ pipeline {
                     done
                     '''
 
-                    // Debugging: List any remaining containers for this branch
                     sh '''
                     #!/bin/bash
                     echo "Remaining containers for branch ${env.BRANCH_NAME}:"
@@ -87,7 +86,6 @@ pipeline {
                 script {
                     echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
 
-                    // Remove conflicting containers
                     sh '''
                     #!/bin/bash
                     for container_id in $(docker ps -a --filter "name=${env.BRANCH_NAME}_container" -q); do
@@ -96,7 +94,6 @@ pipeline {
                     done
                     '''
 
-                    // Deploy new container
                     sh '''
                     #!/bin/bash
                     docker run -d \
