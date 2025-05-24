@@ -49,7 +49,7 @@ pipeline {
                     // Stop running containers
                     sh '''
                     docker ps -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
-                        if [ -n "$container_id" ]; then
+                        if [ ! -z "$container_id" ]; then
                             echo "Stopping container: $container_id"
                             docker stop $container_id || true
                         fi
@@ -59,14 +59,14 @@ pipeline {
                     // Remove stopped containers
                     sh '''
                     docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
-                        if [ -n "$container_id" ]; then
+                        if [ ! -z "$container_id" ]; then
                             echo "Removing container: $container_id"
                             docker rm $container_id || true
                         fi
                     done
                     '''
 
-                    // Debug: List remaining containers
+                    // Debugging: List remaining containers
                     sh '''
                     docker ps -a --filter "name=${env.BRANCH_NAME}_container"
                     '''
