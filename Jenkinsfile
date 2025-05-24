@@ -54,21 +54,29 @@ pipeline {
                 script {
                     echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
 
-                    // Stop and remove containers for this branch using for-loop
-                    sh """
-                    for container in \$(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do
-                        echo "Stopping container: \$container"
-                        docker stop \$container || true
+                    // Stop running containers for the branch
+                    sh '''
+                    #!/bin/bash
+                    for container in $(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do 
+                        echo "Stopping container: $container"
+                        docker stop $container || true
                     done
+                    '''
 
-                    for container in \$(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do
-                        echo "Removing container: \$container"
-                        docker rm \$container || true
+                    // Remove any stopped containers for the branch
+                    sh '''
+                    #!/bin/bash
+                    for container in $(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do 
+                        echo "Removing container: $container"
+                        docker rm $container || true
                     done
-                    """
+                    '''
 
-                    // Debug: Log any remaining containers
-                    sh 'docker ps -a --filter "name=${env.BRANCH_NAME}_container"'
+                    // Log any remaining containers (should be empty if cleanup worked)
+                    sh '''
+                    #!/bin/bash
+                    docker ps -a --filter "name=${env.BRANCH_NAME}_container"
+                    '''
                 }
             }
         }
