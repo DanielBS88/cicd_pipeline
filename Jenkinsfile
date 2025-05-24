@@ -33,7 +33,6 @@ pipeline {
                 script {
                     echo "Replacing logo.svg with ${env.LOGO} for branch ${env.BRANCH_NAME}..."
                     sh '''
-                    #!/bin/bash
                     cp ${LOGO} src/logo.svg
                     echo "Updated logo contents:"
                     cat src/logo.svg
@@ -46,7 +45,6 @@ pipeline {
             steps {
                 echo "Building Docker image: ${env.IMAGE_NAME} with logo ${env.LOGO}..."
                 sh '''
-                #!/bin/bash
                 docker build \
                     --build-arg LOGO=${LOGO} \
                     -t ${IMAGE_NAME} .
@@ -59,14 +57,14 @@ pipeline {
                 script {
                     echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
 
+                    // Stop running containers matching the branch
                     sh '''
-                    #!/bin/bash
-                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
-                        echo "Stopping container: $container_id"
-                        docker stop $container_id || true
-                        echo "Removing container: $container_id"
-                        docker rm $container_id || true
-                    done
+                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop || true
+                    '''
+
+                    // Remove stopped containers matching the branch
+                    sh '''
+                    docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm || true
                     '''
 
                     // Debug: List any remaining containers
@@ -81,7 +79,6 @@ pipeline {
             steps {
                 echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
                 sh '''
-                #!/bin/bash
                 docker run -d \
                     --name ${env.BRANCH_NAME}_container \
                     -p ${PORT}:3000 \
