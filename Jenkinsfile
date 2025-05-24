@@ -48,26 +48,23 @@ pipeline {
 
                     // Stop running containers
                     sh '''
-                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
-                        if [ ! -z "$container_id" ]; then
-                            echo "Stopping container: $container_id"
-                            docker stop $container_id || true
-                        fi
+                    for container_id in $(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do
+                        echo "Stopping container: $container_id"
+                        docker stop $container_id || true
                     done
                     '''
 
                     // Remove stopped containers
                     sh '''
-                    docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
-                        if [ ! -z "$container_id" ]; then
-                            echo "Removing container: $container_id"
-                            docker rm $container_id || true
-                        fi
+                    for container_id in $(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do
+                        echo "Removing container: $container_id"
+                        docker rm $container_id || true
                     done
                     '''
 
-                    // Debugging: List remaining containers
+                    // Debugging: List any remaining containers for this branch
                     sh '''
+                    echo "Remaining containers for branch ${env.BRANCH_NAME}:"
                     docker ps -a --filter "name=${env.BRANCH_NAME}_container"
                     '''
                 }
@@ -79,15 +76,15 @@ pipeline {
                 script {
                     echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
 
-                    // Remove conflicting containers
+                    // Force-remove conflicting containers
                     sh '''
-                    docker ps -a --filter "name=${env.BRANCH_NAME}_container" -q | while read container_id; do
+                    for container_id in $(docker ps -a --filter "name=${env.BRANCH_NAME}_container" -q); do
                         echo "Removing conflicting container: $container_id"
                         docker rm -f $container_id || true
                     done
                     '''
 
-                    // Deploy the new container
+                    // Deploy a new container
                     sh '''
                     docker run -d \
                         --name ${env.BRANCH_NAME}_container \
