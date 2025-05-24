@@ -32,8 +32,12 @@ pipeline {
             steps {
                 script {
                     echo "Replacing logo.svg with ${env.LOGO} for branch ${env.BRANCH_NAME}..."
-                    sh "cp ${env.LOGO} src/logo.svg"
-                    sh "echo 'Current logo contents after replacement:' && cat src/logo.svg"
+                    sh '''
+                    #!/bin/bash
+                    cp ${LOGO} src/logo.svg
+                    echo "Updated logo contents:"
+                    cat src/logo.svg
+                    '''
                 }
             }
         }
@@ -41,11 +45,12 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image: ${env.IMAGE_NAME} with logo ${env.LOGO}..."
-                sh """
+                sh '''
+                #!/bin/bash
                 docker build \
-                    --build-arg LOGO=${env.LOGO} \
-                    -t ${env.IMAGE_NAME} .
-                """
+                    --build-arg LOGO=${LOGO} \
+                    -t ${IMAGE_NAME} .
+                '''
             }
         }
 
@@ -54,27 +59,18 @@ pipeline {
                 script {
                     echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
 
-                    // Stop running containers for the branch
                     sh '''
                     #!/bin/bash
-                    for container in $(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do 
-                        echo "Stopping container: $container"
-                        docker stop $container || true
+                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
+                        echo "Stopping container: $container_id"
+                        docker stop $container_id || true
+                        echo "Removing container: $container_id"
+                        docker rm $container_id || true
                     done
                     '''
 
-                    // Remove any stopped containers for the branch
+                    // Debug: List any remaining containers
                     sh '''
-                    #!/bin/bash
-                    for container in $(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do 
-                        echo "Removing container: $container"
-                        docker rm $container || true
-                    done
-                    '''
-
-                    // Log any remaining containers (should be empty if cleanup worked)
-                    sh '''
-                    #!/bin/bash
                     docker ps -a --filter "name=${env.BRANCH_NAME}_container"
                     '''
                 }
@@ -84,12 +80,13 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
-                sh """
+                sh '''
+                #!/bin/bash
                 docker run -d \
                     --name ${env.BRANCH_NAME}_container \
-                    -p ${env.PORT}:3000 \
-                    ${env.IMAGE_NAME}
-                """
+                    -p ${PORT}:3000 \
+                    ${IMAGE_NAME}
+                '''
             }
         }
     }
