@@ -5,20 +5,18 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
-                    // Dynamically set environment variables based on the branch
                     if (env.BRANCH_NAME == 'main') {
                         env.PORT = '3000'
                         env.IMAGE_NAME = 'nodemain:v1.0'
-                        env.LOGO = 'src/logo_main.svg'  // Use main branch logo
+                        env.LOGO = 'src/logo_main.svg'
                     } else if (env.BRANCH_NAME == 'dev') {
                         env.PORT = '3001'
                         env.IMAGE_NAME = 'nodedev:v1.0'
-                        env.LOGO = 'src/logo_dev.svg'   // Use dev branch logo
+                        env.LOGO = 'src/logo_dev.svg'
                     } else {
                         error("Unknown branch: ${env.BRANCH_NAME}")
                     }
-                    echo "Configured environment for ${env.BRANCH_NAME}:"
-                    echo "PORT=${env.PORT}, IMAGE_NAME=${env.IMAGE_NAME}, LOGO=${env.LOGO}"
+                    echo "Configured environment for ${env.BRANCH_NAME}: PORT=${env.PORT}, IMAGE_NAME=${env.IMAGE_NAME}, LOGO=${env.LOGO}"
                 }
             }
         }
@@ -34,11 +32,7 @@ pipeline {
             steps {
                 script {
                     echo "Replacing logo.svg with ${env.LOGO} for branch ${env.BRANCH_NAME}..."
-                    
-                    // Replace the old logo with the branch-specific logo
                     sh "cp ${env.LOGO} src/logo.svg"
-
-                    // Debug: Verify that src/logo.svg was correctly replaced
                     sh "echo 'Current logo contents after replacement:' && cat src/logo.svg"
                 }
             }
@@ -60,17 +54,20 @@ pipeline {
                 script {
                     echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
 
-                    // Stop running containers for the branch
+                    // Stop and remove containers for this branch using for-loop
                     sh """
-                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop || true
+                    for container in \$(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do
+                        echo "Stopping container: \$container"
+                        docker stop \$container || true
+                    done
+
+                    for container in \$(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do
+                        echo "Removing container: \$container"
+                        docker rm \$container || true
+                    done
                     """
 
-                    // Remove any stopped containers for the branch
-                    sh """
-                    docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm || true
-                    """
-
-                    // Log: Confirm cleanup operation details
+                    // Debug: Log any remaining containers
                     sh 'docker ps -a --filter "name=${env.BRANCH_NAME}_container"'
                 }
             }
@@ -79,19 +76,11 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
-                
-                // Deploy the Docker container
                 sh """
                 docker run -d \
                     --name ${env.BRANCH_NAME}_container \
                     -p ${env.PORT}:3000 \
                     ${env.IMAGE_NAME}
-                """
-
-                // Debug: Verify running containers after deployment
-                sh """
-                echo "Verifying running container:"
-                docker ps --filter "name=${env.BRANCH_NAME}_container"
                 """
             }
         }
@@ -101,7 +90,6 @@ pipeline {
         success {
             echo "Pipeline completed successfully for branch ${env.BRANCH_NAME}!"
         }
-
         failure {
             echo "Pipeline failed for branch ${env.BRANCH_NAME}. Check logs for details."
         }
