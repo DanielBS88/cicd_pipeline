@@ -57,18 +57,29 @@ pipeline {
                 script {
                     echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
 
-                    // Stop running containers matching the branch
+                    // Stop running containers
                     sh '''
-                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop || true
+                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
+                        if [ -n "$container_id" ]; then
+                            echo "Stopping container: $container_id"
+                            docker stop $container_id || true
+                        fi
+                    done
                     '''
 
-                    // Remove stopped containers matching the branch
+                    // Remove stopped containers
                     sh '''
-                    docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm || true
+                    docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
+                        if [ -n "$container_id" ]; then
+                            echo "Removing container: $container_id"
+                            docker rm $container_id || true
+                        fi
+                    done
                     '''
 
-                    // Debug: List any remaining containers
+                    // Debug: List remaining containers
                     sh '''
+                    echo "Remaining containers for ${env.BRANCH_NAME}:"
                     docker ps -a --filter "name=${env.BRANCH_NAME}_container"
                     '''
                 }
