@@ -1,21 +1,24 @@
+# Use a modern version of Node.js
 FROM node:18-alpine
 
+# Set the working directory inside the container
 WORKDIR /opt
 
+# Add application source code to the container
 ADD . /opt
 
+# Install dependencies
 RUN npm install
 
-# Replace dynamic logo
+# Dynamically replace logo.svg (passed as build argument via Jenkinsfile)
 ARG LOGO=src/logo.svg
 RUN cp $LOGO src/logo.svg
 
-# Clear any cached builds to ensure proper React rebuild
-RUN rm -rf build/
-
-# Build the React app (ensure updated logo is reflected)
+# Build the React application for production
 RUN npm run build
 
+# Install the lightweight Serve HTTP server globally
 RUN npm install -g serve
 
+# Set the default command to serve the production build
 CMD ["serve", "-s", "build", "-l", "3000"]

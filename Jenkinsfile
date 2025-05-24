@@ -5,25 +5,25 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
+                    // Dynamically set environment variables based on the branch
                     if (env.BRANCH_NAME == 'main') {
                         env.PORT = '3000'
                         env.IMAGE_NAME = 'nodemain:v1.0'
-                        env.LOGO = 'src/logo_main.svg'
+                        env.LOGO = 'src/logo_main.svg'  // Use main branch logo
                     } else if (env.BRANCH_NAME == 'dev') {
                         env.PORT = '3001'
                         env.IMAGE_NAME = 'nodedev:v1.0'
-                        env.LOGO = 'src/logo_dev.svg'
+                        env.LOGO = 'src/logo_dev.svg'   // Use dev branch logo
                     } else {
                         error("Unknown branch: ${env.BRANCH_NAME}")
                     }
-                    echo "Configured environment for ${env.BRANCH_NAME}: PORT=${env.PORT}, IMAGE_NAME=${env.IMAGE_NAME}, LOGO=${env.LOGO}"
                 }
             }
         }
 
         stage('Checkout') {
             steps {
-                echo "Checking out the ${env.BRANCH_NAME} branch..."
+                // Checkout the source code for the branch
                 checkout scm
             }
         }
@@ -31,80 +31,47 @@ pipeline {
         stage('Replace Logo Before Build') {
             steps {
                 script {
-                    echo "Replacing logo.svg with ${env.LOGO} for branch ${env.BRANCH_NAME}..."
-                    sh '''
-                    cp ${LOGO} src/logo.svg
-                    echo "Updated logo contents:"
-                    cat src/logo.svg
-                    '''
+                    // Replace the default logo with the branch-specific logo
+                    sh "cp ${env.LOGO} src/logo.svg"
+                    echo "${env.BRANCH_NAME} branch logo applied successfully."
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image: ${env.IMAGE_NAME} with logo ${env.LOGO}..."
-                sh '''
-                docker build \
-                    --build-arg LOGO=${LOGO} \
-                    -t ${IMAGE_NAME} .
-                '''
+                // Build the Docker image with branch-specific logo
+                sh "docker build --build-arg LOGO=${env.LOGO} -t ${env.IMAGE_NAME} ."
             }
         }
 
         stage('Cleanup Containers') {
             steps {
                 script {
-                    echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
+                    // Stop any running containers for this branch
+                    sh 'docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop'
 
-                    // Stop running containers
-                    sh '''
-                    docker ps -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
-                        if [ -n "$container_id" ]; then
-                            echo "Stopping container: $container_id"
-                            docker stop $container_id || true
-                        fi
-                    done
-                    '''
-
-                    // Remove stopped containers
-                    sh '''
-                    docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | while read container_id; do
-                        if [ -n "$container_id" ]; then
-                            echo "Removing container: $container_id"
-                            docker rm $container_id || true
-                        fi
-                    done
-                    '''
-
-                    // Debug: List remaining containers
-                    sh '''
-                    echo "Remaining containers for ${env.BRANCH_NAME}:"
-                    docker ps -a --filter "name=${env.BRANCH_NAME}_container"
-                    '''
+                    // Remove any stopped containers for this branch
+                    sh 'docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm'
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
-                sh '''
-                docker run -d \
-                    --name ${env.BRANCH_NAME}_container \
-                    -p ${PORT}:3000 \
-                    ${IMAGE_NAME}
-                '''
+                // Deploy the container for the branch
+                sh "docker run -d --name ${env.BRANCH_NAME}_container -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline completed successfully for branch ${env.BRANCH_NAME}!"
+            echo 'Pipeline executed successfully!'
         }
+
         failure {
-            echo "Pipeline failed for branch ${env.BRANCH_NAME}. Check logs for details."
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
