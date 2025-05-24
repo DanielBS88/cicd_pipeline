@@ -20,14 +20,6 @@ RUN rm -rf build/
 # Build the React application for production
 RUN npm run build
 
-# Dynamically replace logo.svg (passed as build argument via Jenkinsfile)
-#ARG LOGO=src/logo.svg
-#RUN cp $LOGO src/logo.svg
-# Clear cached React builds to force logo replacement
-#RUN rm -rf build/
-# Build the React application for production
-#RUN npm run build
-
 # Install the lightweight Serve HTTP server globally
 RUN npm install -g serve
 
