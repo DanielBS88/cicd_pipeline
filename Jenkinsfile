@@ -29,11 +29,11 @@ pipeline {
         stage('Replace Logo Before Build') {
             steps {
                 script {
-                    echo "Replacing logo file with: ${env.LOGO}" // Log the value of LOGO for debugging
+                    echo "Replacing logo file with: ${env.LOGO}" // Debug LOGO variable
                     sh '''
                     #!/bin/bash
                     echo "Current branch: ${env.BRANCH_NAME}"
-                    echo "Replacing src/logo.svg with ${env.LOGO}"
+                    echo "LOGO location: ${env.LOGO}"
                     cp ${env.LOGO} src/logo.svg
                     '''
                     echo "${env.BRANCH_NAME} branch logo applied successfully."
@@ -45,7 +45,7 @@ pipeline {
             steps {
                 sh '''
                 #!/bin/bash
-                echo "Building Docker image ${env.IMAGE_NAME} with logo ${env.LOGO}"
+                echo "Building Docker image ${env.IMAGE_NAME} with passed logo ${env.LOGO}"
                 docker build --build-arg LOGO=${env.LOGO} -t ${env.IMAGE_NAME} .
                 '''
             }
@@ -54,7 +54,7 @@ pipeline {
         stage('Cleanup Containers') {
             steps {
                 script {
-                    echo "Cleaning up any running or stopped containers for ${env.BRANCH_NAME}..."
+                    echo "Cleaning up containers for branch ${env.BRANCH_NAME}..."
 
                     sh '''
                     #!/bin/bash
@@ -74,7 +74,7 @@ pipeline {
 
                     sh '''
                     #!/bin/bash
-                    echo "Remaining containers for branch ${env.BRANCH_NAME}:"
+                    echo "Remaining containers for ${env.BRANCH_NAME}:"
                     docker ps -a --filter "name=${env.BRANCH_NAME}_container"
                     '''
                 }
@@ -84,7 +84,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
+                    echo "Deploying container for ${env.BRANCH_NAME} on port ${env.PORT}..."
 
                     sh '''
                     #!/bin/bash
@@ -96,10 +96,7 @@ pipeline {
 
                     sh '''
                     #!/bin/bash
-                    docker run -d \
-                        --name ${env.BRANCH_NAME}_container \
-                        -p ${env.PORT}:3000 \
-                        ${env.IMAGE_NAME}
+                    docker run -d --name ${env.BRANCH_NAME}_container -p ${env.PORT}:3000 ${env.IMAGE_NAME}
                     '''
                 }
             }
@@ -108,10 +105,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline executed successfully!'
+            echo 'Pipeline succeeded successfully!'
         }
         failure {
-            echo 'Pipeline failed. Check logs for details.'
+            echo 'Pipeline failed, logs must be reviewed.'
         }
     }
 }
