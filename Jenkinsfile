@@ -29,7 +29,11 @@ pipeline {
         stage('Replace Logo Before Build') {
             steps {
                 script {
-                    sh "cp ${env.LOGO} src/logo.svg"
+                    sh '''
+                    #!/bin/bash
+                    echo "Replacing logo.svg with ${env.LOGO}"
+                    cp ${env.LOGO} src/logo.svg
+                    '''
                     echo "${env.BRANCH_NAME} branch logo applied successfully."
                 }
             }
@@ -37,7 +41,11 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build --build-arg LOGO=${env.LOGO} -t ${env.IMAGE_NAME} ."
+                sh '''
+                #!/bin/bash
+                echo "Building Docker image ${env.IMAGE_NAME} with logo ${env.LOGO}"
+                docker build --build-arg LOGO=${env.LOGO} -t ${env.IMAGE_NAME} .
+                '''
             }
         }
 
@@ -48,6 +56,7 @@ pipeline {
 
                     // Stop running containers
                     sh '''
+                    #!/bin/bash
                     for container_id in $(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do
                         echo "Stopping container: $container_id"
                         docker stop $container_id || true
@@ -56,6 +65,7 @@ pipeline {
 
                     // Remove stopped containers
                     sh '''
+                    #!/bin/bash
                     for container_id in $(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do
                         echo "Removing container: $container_id"
                         docker rm $container_id || true
@@ -64,6 +74,7 @@ pipeline {
 
                     // Debugging: List any remaining containers for this branch
                     sh '''
+                    #!/bin/bash
                     echo "Remaining containers for branch ${env.BRANCH_NAME}:"
                     docker ps -a --filter "name=${env.BRANCH_NAME}_container"
                     '''
@@ -76,16 +87,18 @@ pipeline {
                 script {
                     echo "Deploying Docker container for ${env.BRANCH_NAME} on port ${env.PORT}..."
 
-                    // Force-remove conflicting containers
+                    // Remove conflicting containers
                     sh '''
+                    #!/bin/bash
                     for container_id in $(docker ps -a --filter "name=${env.BRANCH_NAME}_container" -q); do
                         echo "Removing conflicting container: $container_id"
                         docker rm -f $container_id || true
                     done
                     '''
 
-                    // Deploy a new container
+                    // Deploy new container
                     sh '''
+                    #!/bin/bash
                     docker run -d \
                         --name ${env.BRANCH_NAME}_container \
                         -p ${env.PORT}:3000 \
