@@ -5,14 +5,15 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
+                    // Dynamically set environment variables based on the current branch
                     if (env.BRANCH_NAME == 'main') {
                         env.PORT = '3000'
                         env.IMAGE_NAME = 'nodemain:v1.0'
-                        env.LOGO = 'src/logo_main.svg'
+                        env.LOGO = 'src/logo_main.svg'  // Use main branch logo
                     } else if (env.BRANCH_NAME == 'dev') {
                         env.PORT = '3001'
                         env.IMAGE_NAME = 'nodedev:v1.0'
-                        env.LOGO = 'src/logo_dev.svg'
+                        env.LOGO = 'src/logo_dev.svg'   // Use dev branch logo
                     } else {
                         error("Unknown branch: ${env.BRANCH_NAME}")
                     }
@@ -22,6 +23,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
+                // Checkout source code for the branch
                 checkout scm
             }
         }
@@ -29,11 +31,8 @@ pipeline {
         stage('Replace Logo Before Build') {
             steps {
                 script {
-                    sh '''
-                    #!/bin/bash
-                    echo "Replacing logo.svg with ${env.LOGO}"
-                    cp ${env.LOGO} src/logo.svg
-                    '''
+                    // Replace the default logo with the branch-specific logo
+                    sh "cp ${env.LOGO} src/logo.svg"
                     echo "${env.BRANCH_NAME} branch logo applied successfully."
                 }
             }
@@ -41,56 +40,25 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh '''
-                #!/bin/bash
-                echo "Building Docker image: ${env.IMAGE_NAME}"
-                docker build --build-arg LOGO=${env.LOGO} -t ${env.IMAGE_NAME} .
-                '''
+                // Build the Docker image for the application
+                sh "docker build -t ${env.IMAGE_NAME} ."
             }
         }
 
         stage('Cleanup Containers') {
             steps {
                 script {
-                    echo "Cleaning up containers for branch ${env.BRANCH_NAME}..."
-                    sh '''
-                    #!/bin/bash
-                    for container_id in $(docker ps -q --filter "name=${env.BRANCH_NAME}_container"); do
-                        docker stop $container_id || true
-                    done
-                    for container_id in $(docker ps -a -q --filter "name=${env.BRANCH_NAME}_container"); do
-                        docker rm $container_id || true
-                    done
-                    '''
+                    // Stop and remove containers specific to the current branch
+                    sh 'docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop'
+                    sh 'docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm'
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                script {
-                    echo "Deploying container for branch: ${env.BRANCH_NAME}, Port: ${env.PORT}"
-
-                    // Handle conflicting containers
-                    sh '''
-                    #!/bin/bash
-                    echo "Cleaning up any conflicting container named ${env.BRANCH_NAME}_container..."
-                    if [ $(docker ps -a --filter "name=${env.BRANCH_NAME}_container" -q | wc -l) -gt 0 ]; then
-                        for container_id in $(docker ps -a --filter "name=${env.BRANCH_NAME}_container" -q); do
-                            echo "Stopping and removing container: $container_id"
-                            docker stop $container_id || true
-                            docker rm $container_id || true
-                        done
-                    fi
-                    '''
-
-                    // Deploy new container
-                    sh '''
-                    #!/bin/bash
-                    echo "Starting new container: ${env.BRANCH_NAME}_container"
-                    docker run -d --name ${env.BRANCH_NAME}_container -p ${env.PORT}:3000 ${env.IMAGE_NAME}
-                    '''
-                }
+                // Run the Docker container for the application
+                sh "docker run -d --name ${env.BRANCH_NAME}_container -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
         }
     }
@@ -99,6 +67,7 @@ pipeline {
         success {
             echo 'Pipeline executed successfully!'
         }
+
         failure {
             echo 'Pipeline failed. Check logs for details.'
         }

@@ -10,10 +10,6 @@ ADD . /opt
 # Install dependencies
 RUN npm install
 
-# Dynamically replace logo.svg (passed as build argument via Jenkinsfile)
-ARG LOGO=src/logo.svg
-RUN cp $LOGO src/logo.svg
-
 # Build the React application for production
 RUN npm run build
 
