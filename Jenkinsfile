@@ -9,11 +9,11 @@ pipeline {
                     if (env.BRANCH_NAME == 'main') {
                         env.PORT = '3000'
                         env.IMAGE_NAME = 'nodemain:v1.0'
-                        env.LOGO = 'src/logo_main.svg'  // Use main branch logo
+                        env.CONTAINER_NAME = 'main_container'  // Container name for main branch
                     } else if (env.BRANCH_NAME == 'dev') {
                         env.PORT = '3001'
                         env.IMAGE_NAME = 'nodedev:v1.0'
-                        env.LOGO = 'src/logo_dev.svg'   // Use dev branch logo
+                        env.CONTAINER_NAME = 'dev_container'   // Container name for dev branch
                     } else {
                         error("Unknown branch: ${env.BRANCH_NAME}")
                     }
@@ -32,7 +32,7 @@ pipeline {
             steps {
                 script {
                     // Replace the default logo with the branch-specific logo
-                    sh "cp ${env.LOGO} src/logo.svg"
+                    sh "cp src/logo_${env.BRANCH_NAME}.svg src/logo.svg"
                     echo "${env.BRANCH_NAME} branch logo applied successfully."
                 }
             }
@@ -48,9 +48,11 @@ pipeline {
         stage('Cleanup Containers') {
             steps {
                 script {
-                    // Stop and remove containers specific to the current branch
-                    sh 'docker ps -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker stop'
-                    sh 'docker ps -a -q --filter "name=${env.BRANCH_NAME}_container" | xargs -r docker rm'
+                    // Stop any running containers for this branch
+                    sh "docker ps -q --filter \"name=${env.CONTAINER_NAME}\" | xargs -r docker stop"
+
+                    // Remove any stopped containers for this branch
+                    sh "docker ps -a -q --filter \"name=${env.CONTAINER_NAME}\" | xargs -r docker rm"
                 }
             }
         }
@@ -58,7 +60,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 // Run the Docker container for the application
-                sh "docker run -d --name ${env.BRANCH_NAME}_container -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
+                sh "docker run -d --name ${env.CONTAINER_NAME} -p ${env.PORT}:3000 ${env.IMAGE_NAME}"
             }
         }
     }
